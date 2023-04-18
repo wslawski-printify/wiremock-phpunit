@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  php:
+    image: 130525269254.dkr.ecr.us-east-2.amazonaws.com/fyulorg/php:1.0.5-php8.4-dev
+    environment:
+      - XDEBUG_MODE=coverage,debug
+      - COMPOSER_AUTH
+      - COMPOSER_PROCESS_TIMEOUT=600
+      - COMPOSER_HOME=/var/composer
+    depends_on:
+      - wiremock
+    volumes:
+      - ./:/srv
+      - ~/.composer:/var/composer
+    working_dir: /srv
+    user: $DOCKER_UID:$DOCKER_UID
+
+  wiremock:
+    image: wiremock/wiremock:latest
+    ports:
+      - 8444:8080
+
+volumes:
+  data-volume:

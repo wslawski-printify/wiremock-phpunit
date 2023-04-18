@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  phpstan:
+    runs-on: ubuntu-latest
+    container:
+      image: cobiro/php:8.1-develop
+    services:
+      wiremock:
+        image: wiremock/wiremock:latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: vendor
+          key: v1-dependencies-${{ hashFiles('composer.json') }}
+          restore-keys: v1-dependencies-
+      - run: composer install -n -a
+      - name: Run static code analysis
+        run: vendor/bin/phpstan
+
+  test_unit:
+    runs-on: ubuntu-latest
+    container:
+      image: cobiro/php:8.1-develop
+    services:
+      wiremock:
+        image: wiremock/wiremock:latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: vendor
+          key: v1-dependencies-${{ hashFiles('composer.json') }}
+          restore-keys: v1-dependencies-
+      - run: composer install -n -a
+      - name: Configure pcov working directory
+        run: echo pcov.directory=/root/repo >> "$PHP_INI_DIR/conf.d/pcov.ini"
+      - name: Run unit tests
+        run: php vendor/bin/phpunit --configuration=phpunit.xml --coverage-clover coverage-clover/clover-unit.xml --log-junit phpunit/unit-junit.xml --testdox
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: phpunit/
+
+  test_integration_10:
+    runs-on: ubuntu-latest
+    container:
+      image: cobiro/php:8.1-develop
+    services:
+      wiremock:
+        image: wiremock/wiremock:latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: vendor
+          key: v1-dependencies-phpunit10-${{ hashFiles('composer.json') }}
+          restore-keys: v1-dependencies-
+      - run: composer install -n -a --prefer-lowest
+      - name: Configure pcov working directory
+        run: echo pcov.directory=/root/repo >> "$PHP_INI_DIR/conf.d/pcov.ini"
+      - name: Run integration tests (expect 2 WireMock verification failures)
+        shell: bash
+        run: |
+          result=$((php vendor/bin/phpunit --configuration=phpunit.integration.xml --coverage-clover coverage-clover/clover-unit.xml --log-junit phpunit/unit-junit.xml --testdox) | tee /dev/tty ) &&
+          lines=$(echo "$result" | grep "WireMock verification failed for test" | wc -l) &&
+          [ "$lines" = 2 ]
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-10-results
+          path: phpunit/
+
+  test_integration_11:
+    runs-on: ubuntu-latest
+    container:
+      image: cobiro/php:8.2-develop
+    services:
+      wiremock:
+        image: wiremock/wiremock:latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: vendor
+          key: v1-dependencies-phpunit11-${{ hashFiles('composer.json') }}
+          restore-keys: v1-dependencies-
+      - run: composer install -n -a
+      - name: Configure pcov working directory
+        run: echo pcov.directory=/root/repo >> "$PHP_INI_DIR/conf.d/pcov.ini"
+      - name: Run integration tests (expect 2 WireMock verification failures)
+        shell: bash
+        run: |
+          result=$((php vendor/bin/phpunit --configuration=phpunit.integration.xml --coverage-clover coverage-clover/clover-unit.xml --log-junit phpunit/unit-junit.xml --testdox) | tee /dev/tty ) &&
+          lines=$(echo "$result" | grep "WireMock verification failed for test" | wc -l) &&
+          [ "$lines" = 2 ]
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-11-results
+          path: phpunit/
