@@ -42,12 +42,13 @@ final class WireMockProxy
             return;
         }
 
+        self::$wireMock->resetAllScenarios();
+
         if (WireMockProxy::$verifyCallbacks === []) {
             return;
         }
 
         self::$wireMock->reset();
-        self::$wireMock->resetAllScenarios();
         WireMockProxy::$verifyCallbacks = [];
     }
 
