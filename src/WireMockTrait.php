@@ -24,7 +24,9 @@ trait WireMockTrait
         array|string|null $responseBody = null,
         int               $responseStatusCode = 200,
         ?string $requestContentType = null,
-        bool $stubRequestBody = false
+        bool $stubRequestBody = false,
+        ?string $inScenario = null,
+        ?string $toScenario = null
     ): void {
         $response = $this->wireResponse($responseStatusCode, $responseBody, $responseHeaders);
 
@@ -34,6 +36,14 @@ trait WireMockTrait
 
         if ($requestBodyMatchingStrategy !== null && $stubRequestBody) {
             $request->withRequestBody($requestBodyMatchingStrategy);
+        }
+
+        if ($toScenario !== null) {
+            $request->willSetStateTo($toScenario);
+        }
+
+        if ($inScenario !== null) {
+            $request->inScenario($inScenario);
         }
 
         WireMockProxy::instance()->stubFor($request->willReturn($response));
