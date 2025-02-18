@@ -25,8 +25,9 @@ trait WireMockTrait
         int               $responseStatusCode = 200,
         ?string $requestContentType = null,
         bool $stubRequestBody = false,
+        ?string $whenScenario = null,
+        ?string $toScenario = null,
         ?string $inScenario = null,
-        ?string $toScenario = null
     ): void {
         $response = $this->wireResponse($responseStatusCode, $responseBody, $responseHeaders);
 
@@ -40,6 +41,10 @@ trait WireMockTrait
 
         if ($toScenario !== null) {
             $request->willSetStateTo($toScenario);
+        }
+
+        if ($whenScenario !== null) {
+            $request->whenScenarioStateIs($whenScenario);
         }
 
         if ($inScenario !== null) {
