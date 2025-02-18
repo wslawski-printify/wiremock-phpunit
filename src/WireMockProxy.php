@@ -47,6 +47,7 @@ final class WireMockProxy
         }
 
         self::$wireMock->reset();
+        self::$wireMock->resetAllScenarios();
         WireMockProxy::$verifyCallbacks = [];
     }
 
