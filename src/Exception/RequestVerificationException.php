@@ -18,6 +18,8 @@ final class RequestVerificationException extends \Exception
         string $method,
         \Throwable $wireMockException
     ): self {
+        $url = str_replace('%', '%%', $url);
+
         return new self(
             sprintf(
                 "Failed to verify interactions for path $url and method $method due to: %s. For more check wiremock logs.",

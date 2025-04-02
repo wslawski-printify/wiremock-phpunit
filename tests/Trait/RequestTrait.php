@@ -11,11 +11,11 @@ trait RequestTrait
 {
     use WireMockTrait;
 
-    public function mockTestRequest(string $expectedBody): void
+    public function mockTestRequest(string $expectedBody, string $path = '/test'): void
     {
         $this->wireMock(
             'GET',
-            '/test',
+            $path,
             [],
             null,
             [],

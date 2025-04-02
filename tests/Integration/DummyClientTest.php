@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Integration;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\Uri;
 use PHPUnit\Framework\TestCase;
 use Tests\Trait\RequestTrait;
 
@@ -92,6 +93,17 @@ final class DummyClientTest extends TestCase
             ]
         )->getBody()->getContents(), true);
         self::assertEquals($expectedBody2, $result);
+    }
+
+    public function testItVerifiesRequestWithQuery(): void
+    {
+        $expectedBody = ['someKey' => 'someValue'];
+
+        $this->mockTestRequest((string) json_encode($expectedBody), '/test?' . http_build_query(['test' => ['asd' => '123', 'xyz' => '456']]));
+
+        $uri = (new Uri('/test'))->withQuery(http_build_query(['test' => ['asd' => '123', 'xyz' => '456']]));
+        $result = json_decode($this->client->get($uri)->getBody()->getContents(), true);
+        self::assertEquals($expectedBody, $result);
     }
 
     public function testItFailsAsExpected(): void
