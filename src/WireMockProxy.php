@@ -78,6 +78,8 @@ final class WireMockProxy
             }
         }
 
+        WireMockProxy::$verifyCallbacks = [];
+
 
         if (count($thrownExceptions) > 0) {
             foreach ($failedStubs as $failedStub) {
@@ -100,6 +102,10 @@ final class WireMockProxy
 
     private static function cleanStub(string $stubId): void
     {
+        if (self::$wireMock === null) {
+            return;
+        }
+
         try {
             self::$wireMock->getSingleStubMapping($stubId);
         } catch (ClientException $exception) {
@@ -115,10 +121,6 @@ final class WireMockProxy
             (new ServeEventQuery())
                 ->withStubMapping($stubId)
         );
-
-        if ($serveEvents === null) {
-            return;
-        }
 
         foreach ($serveEvents->getRequests() as $serveEvent) {
             self::$wireMock->removeServeEvent($serveEvent->getId());
