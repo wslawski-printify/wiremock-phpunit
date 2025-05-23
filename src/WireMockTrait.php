@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace WireMock\Phpunit;
 
+use http\Env\Request;
+use WireMock\Client\CountMatchingRequestsResult;
+use WireMock\Client\FindRequestsResult;
+use WireMock\Client\LoggedRequest;
+use WireMock\Client\ServeEventQuery;
 use WireMock\Client\ValueMatchingStrategy;
 use WireMock\Phpunit\Exception\RequestVerificationException;
 use GuzzleHttp\Exception\ClientException;
@@ -12,6 +17,7 @@ use WireMock\Client\RequestPatternBuilder;
 use WireMock\Client\ResponseDefinitionBuilder;
 use WireMock\Client\VerificationException;
 use WireMock\Client\WireMock;
+use WireMock\Stubbing\StubMapping;
 
 trait WireMockTrait
 {
@@ -48,13 +54,14 @@ trait WireMockTrait
         }
 
         if ($inScenario !== null) {
-            $request->inScenario($inScenario);
+            $request->inScenario($this->appendTestToken($inScenario));
+            WireMockProxy::addScenario($inScenario);
         }
 
-        WireMockProxy::instance()->stubFor($request->willReturn($response));
+        $stub = WireMockProxy::instance()->stubFor($request->willReturn($response));
 
         // wire request
-        WireMockProxy::$verifyCallbacks[] = function () use ($method, $path, $requestHeaders, $requestBodyMatchingStrategy) {
+        WireMockProxy::$verifyCallbacks[(string) $stub->getId()] = function () use ($stub, $method, $path, $requestHeaders, $requestBodyMatchingStrategy) {
             $requestPatternBuilder = $this->wireMethodRequestedFor($method, $path);
 
             if ($requestBodyMatchingStrategy !== null) {
@@ -67,17 +74,58 @@ trait WireMockTrait
 
             try {
                 WireMockProxy::instance()->verify($requestPatternBuilder);
+                $this->checkServeEventsMatchingStub($stub->getId());
             } catch (VerificationException $verificationException) { // @phpstan-ignore-line
                 throw RequestVerificationException::verificationFailed(
                     $path,
                     $method,
-                    $verificationException
+                    $verificationException,
+                    $stub->getId()
                 );
             } catch (ClientException $clientException) {
                 throw RequestVerificationException::clientException(
                     $path,
                     $method,
-                    $clientException
+                    $clientException,
+                    $stub->getId()
+                );
+            }
+        };
+    }
+
+    protected function appendStub(StubMapping $stub): void
+    {
+        $requestPattern = $stub->getRequest();
+
+        WireMockProxy::$verifyCallbacks[(string) $stub->getId()] = function () use ($requestPattern, $stub) {
+            try {
+                $reflectionMethod = new \ReflectionMethod(WireMockProxy::instance(), 'doPost');
+                $response = $reflectionMethod->invoke(
+                    WireMockProxy::instance(),
+                    '__admin/requests/count',
+                    $requestPattern,
+                    CountMatchingRequestsResult::class
+                );
+                $count = $response->getCount();
+
+                if ($count < 1) {
+                    throw new VerificationException("Expected at least one request, but found $count");
+                }
+
+                $this->checkServeEventsMatchingStub($stub->getId());
+            } catch (VerificationException $verificationException) { // @phpstan-ignore-line
+                throw RequestVerificationException::verificationFailed(
+                    (string) $requestPattern->getUrlMatchingStrategy()?->getMatchingValue(),
+                    $requestPattern->getMethod(),
+                    $verificationException,
+                    $stub->getId()
+                );
+            } catch (ClientException $clientException) {
+                throw RequestVerificationException::clientException(
+                    (string) $requestPattern->getUrlMatchingStrategy()?->getMatchingValue(),
+                    $requestPattern->getMethod(),
+                    $clientException,
+                    $stub->getId()
                 );
             }
         };
@@ -138,5 +186,28 @@ trait WireMockTrait
         }
 
         return null;
+    }
+
+    private function appendTestToken(string $value): string
+    {
+        $testToken = getenv('TEST_TOKEN');
+
+        if ($testToken !== false) {
+            return sprintf('%s_%s', $testToken, $value);
+        }
+
+        return $value;
+    }
+
+    private function checkServeEventsMatchingStub(string $stubId): void
+    {
+        $serveEvents = WireMockProxy::instance()->getAllServeEvents(
+            (new ServeEventQuery())
+                ->withStubMapping($stubId)
+        );
+
+        if (count($serveEvents?->getRequests() ?? []) === 0) {
+            throw new VerificationException(sprintf('No requests found for stub %s', $stubId));
+        }
     }
 }

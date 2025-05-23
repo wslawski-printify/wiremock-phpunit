@@ -8,7 +8,8 @@ final class RequestVerificationException extends \Exception
 {
     private function __construct(
         string $message,
-        \Throwable $previous
+        \Throwable $previous,
+        public readonly string $stubId
     ) {
         parent::__construct($message, previous: $previous);
     }
@@ -16,7 +17,8 @@ final class RequestVerificationException extends \Exception
     public static function verificationFailed(
         string $url,
         string $method,
-        \Throwable $wireMockException
+        \Throwable $wireMockException,
+        string $stubId
     ): self {
         $url = str_replace('%', '%%', $url);
 
@@ -25,18 +27,21 @@ final class RequestVerificationException extends \Exception
                 "Failed to verify interactions for path $url and method $method due to: %s. For more check wiremock logs.",
                 $wireMockException->getMessage() . PHP_EOL
             ),
-            $wireMockException
+            $wireMockException,
+            $stubId
         );
     }
 
     public static function clientException(
         string $url,
         string $method,
-        \Throwable $exception
+        \Throwable $exception,
+        string $stubId
     ): self {
         return new self(
             "Request to path $url and method $method failed due to: {$exception->getMessage()}e",
-            $exception
+            $exception,
+            $stubId
         );
     }
 }

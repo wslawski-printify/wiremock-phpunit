@@ -18,6 +18,8 @@ services:
 
   wiremock:
     image: wiremock/wiremock:latest
+    ports:
+      - 8444:8080
 
 volumes:
   data-volume:
