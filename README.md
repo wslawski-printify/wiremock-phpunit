@@ -24,9 +24,8 @@ To use extension add to your phpunit.xml configuration:
 ```
 
 It listens for those events and triggers specific actions:
-- `PHPUnit\Event\Test\PreparationStarted` - Resets wiremock interactions
 - `PHPUnit\Event\TestRunner\BootstrapFinished` - Starts wiremock instance
-- `PHPUnit\Event\Test\Finished` - Verifies interactions
+- `PHPUnit\Event\Test\Finished` - Verifies interactions cleanups requests and stubs
 
 #### Mocking requests
 
@@ -62,6 +61,12 @@ trait RequestTrait
     }
 }
 ```
+
+You can also use methods `WireMock\Phpunit\WireMockTrait::appendStubMappingVerification()` and `WireMock\Phpunit\WireMockTrait::appendStubIdVerification()`
+
+First method will allow to you append existing `StubMapping` instance and check if it was served during the tests. By default, it will clean stub from WireMock instance, but it can be changed. This will require if you already have in your code stubFor calls to add just append verification for existing stubs.
+
+Second method accepts stub id, and will keep stub state as it is after the test. Use case for it for example is importing all stubs to wiremock instance when container is started, and then verifying that specific stub was served during the test, instead of stubbing them during the tests.
 
 ### Configuration
 
