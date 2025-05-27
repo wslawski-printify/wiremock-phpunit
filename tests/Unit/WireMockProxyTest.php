@@ -95,7 +95,11 @@ final class WireMockProxyTest extends TestCase
 
         $expectedBody = json_encode(['someKey' => 'someValue']);
 
-        $this->mockTestPostRequest((string) $expectedBody, (string) json_encode(['some-body' => 'whatever']));
+        $this->mockTestPostRequest(
+            (string) $expectedBody,
+            (string) json_encode(['some-body' => 'whatever']),
+            true
+        );
 
         $client = new Client([
             'base_uri' => 'http://wiremock:8080',

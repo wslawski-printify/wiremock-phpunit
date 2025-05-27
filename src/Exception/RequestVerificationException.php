@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace WireMock\Phpunit\Exception;
 
+use WireMock\Client\FindNearMissesResult;
+
 final class RequestVerificationException extends \Exception
 {
     private function __construct(
         string $message,
-        \Throwable $previous,
-        public readonly string $stubId
+        public readonly string $stubId,
+        ?\Throwable $previous = null,
     ) {
         parent::__construct($message, previous: $previous);
     }
@@ -17,17 +19,45 @@ final class RequestVerificationException extends \Exception
     public static function verificationFailed(
         string $url,
         string $method,
-        \Throwable $wireMockException,
+        FindNearMissesResult $findNearMissesResult,
         string $stubId
     ): self {
         $url = str_replace('%', '%%', $url);
 
+        $allNearMisses = [];
+
+        foreach ($findNearMissesResult->getNearMisses() as $nearMiss) {
+            $nearMissResult = sprintf(
+                '%s %s with actual request body %s and headers %s matches distance %s',
+                $method,
+                $url,
+                $nearMiss->getRequest()->getBody(),
+                implode(',', $nearMiss->getRequest()->getHeaders()),
+                $nearMiss->getMatchResult()->getDistance(),
+            );
+
+            if ($nearMiss->getMapping() !== null) {
+                $nearMissResult .= sprintf(
+                    ' (stub id: %s)',
+                    $nearMiss->getMapping()->getId()
+                );
+            }
+            $allNearMisses[] = $nearMissResult;
+        }
+
+        $message = sprintf(
+            "Failed to verify interactions for path %s and method %s (stub %s). For more check wiremock logs.",
+            $url,
+            $method,
+            $stubId
+        );
+
+        if ($allNearMisses !== []) {
+            $message .= ' Near misses:' . PHP_EOL . implode(PHP_EOL, $allNearMisses);
+        }
+
         return new self(
-            sprintf(
-                "Failed to verify interactions for path $url and method $method due to: %s. For more check wiremock logs.",
-                $wireMockException->getMessage() . PHP_EOL
-            ),
-            $wireMockException,
+            $message,
             $stubId
         );
     }
@@ -39,9 +69,9 @@ final class RequestVerificationException extends \Exception
         string $stubId
     ): self {
         return new self(
-            "Request to path $url and method $method failed due to: {$exception->getMessage()}e",
+            "Request to path $url and method $method failed due to: {$exception->getMessage()}",
+            $stubId,
             $exception,
-            $stubId
         );
     }
 }

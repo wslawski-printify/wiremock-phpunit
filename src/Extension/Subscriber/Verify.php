@@ -16,7 +16,8 @@ final class Verify implements FinishedSubscriber
     public function notify(Finished $event): void
     {
         try {
-            WireMockProxy::verify($event->test()->name());
+            $test = sprintf('%s::%s', basename($event->test()->file(), '.php'), $event->test()->name());
+            WireMockProxy::verify($test);
         } catch (VerifyException $exception) {
             Facade::emitter()->testFailed(
                 $event->test(),

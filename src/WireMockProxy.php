@@ -5,18 +5,32 @@ declare(strict_types=1);
 namespace WireMock\Phpunit;
 
 use WireMock\Client\ClientException;
+use WireMock\Client\Curl;
+use WireMock\Client\HttpWait;
 use WireMock\Client\ServeEventQuery;
+use WireMock\Phpunit\Dto\Stub;
 use WireMock\Phpunit\Exception\RequestVerificationException;
 use WireMock\Phpunit\Exception\StartException;
 use WireMock\Phpunit\Exception\VerifyException;
 use WireMock\Client\WireMock;
+use WireMock\Serde\SerializerFactory;
 
+/**
+ * @internal
+ */
 final class WireMockProxy
 {
-    /** @var array<callable> */
+    /**
+     * @var array<string, Stub>
+     */
     public static array $verifyCallbacks = [];
-    public static array $scenarios = [];
+
     public static ?WireMock $wireMock = null;
+
+    private static ?Curl $curl = null;
+    private static string $host;
+    private static string $port;
+    public static ?string $testToken = null;
 
     public static function startWireMock(
         string $host,
@@ -27,11 +41,22 @@ final class WireMockProxy
             return;
         }
 
+        self::$testToken = getenv('TEST_TOKEN') !== false ? getenv('TEST_TOKEN') : null;
+
         if ($host === '' || $port === '') {
             throw StartException::missingParameters();
         }
 
-        self::$wireMock = WireMock::create($host, $port);
+        self::$host = $host;
+        self::$port = $port;
+        self::$curl = new Curl();
+        self::$wireMock = new WireMock(
+            new HttpWait(),
+            self::$curl,
+            SerializerFactory::default(),
+            $host,
+            $port
+        );
         $serverStarted = self::$wireMock->isAlive($timeout);
 
         if (!$serverStarted) {
@@ -45,8 +70,30 @@ final class WireMockProxy
             return;
         }
 
-        foreach (self::$scenarios as $scenario) {
+        foreach (WireMockContext::$scenarios as $scenario) {
             self::$wireMock->resetScenario($scenario);
+        }
+
+        $allRequests = json_decode(
+            (string)self::$curl?->get(
+                sprintf(
+                    'http://%s:%s/__admin/requests',
+                    self::$host,
+                    self::$port
+                )
+            ),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        )['requests'] ?? [];
+
+
+        $unmatched = array_filter($allRequests, static function (array $request) {
+            return $request['wasMatched'] === false;
+        });
+
+        foreach ($unmatched as $request) {
+            self::$wireMock->removeServeEvent($request['id']);
         }
 
         WireMockProxy::$verifyCallbacks = [];
@@ -58,8 +105,8 @@ final class WireMockProxy
             return;
         }
 
-        if (!in_array($scenario, self::$scenarios, true)) {
-            self::$scenarios[] = $scenario;
+        if (!in_array($scenario, WireMockContext::$scenarios, true)) {
+            WireMockContext::$scenarios[] = $scenario;
         }
     }
 
@@ -68,23 +115,28 @@ final class WireMockProxy
         $thrownExceptions = [];
         $failedStubs = [];
 
-        foreach (WireMockProxy::$verifyCallbacks as $key => $verifyCallback) {
+        foreach (WireMockProxy::$verifyCallbacks as $stub) {
             try {
-                $verifyCallback();
-                self::cleanStub($key);
+                ($stub->verificationCallback)($stub->createdAt);
+
+                if ($stub->reset) {
+                    self::cleanStub($stub);
+                }
             } catch (RequestVerificationException $exception) {
                 $thrownExceptions[] = $exception;
-                $failedStubs[] = $exception->stubId;
+                $failedStubs[] = $stub;
             }
         }
 
         WireMockProxy::$verifyCallbacks = [];
 
-
         if (count($thrownExceptions) > 0) {
             foreach ($failedStubs as $failedStub) {
-                unset(WireMockProxy::$verifyCallbacks[$failedStub]);
-                self::cleanStub($failedStub);
+                unset(self::$verifyCallbacks[$failedStub->id]);
+
+                if ($failedStub->reset) {
+                    self::cleanStub($failedStub);
+                }
             }
 
             throw new VerifyException($test, ...$thrownExceptions);
@@ -100,14 +152,14 @@ final class WireMockProxy
         return self::$wireMock;
     }
 
-    private static function cleanStub(string $stubId): void
+    private static function cleanStub(Stub $stub): void
     {
         if (self::$wireMock === null) {
             return;
         }
 
         try {
-            self::$wireMock->getSingleStubMapping($stubId);
+            self::$wireMock->getSingleStubMapping($stub->id);
         } catch (ClientException $exception) {
             if ($exception->getResponseCode() === 404) {
                 return;
@@ -116,14 +168,23 @@ final class WireMockProxy
             throw $exception;
         }
 
-        self::$wireMock->removeStub($stubId);
+        self::$wireMock->removeStub($stub->id);
         $serveEvents = self::$wireMock->getAllServeEvents(
             (new ServeEventQuery())
-                ->withStubMapping($stubId)
+                ->withStubMapping($stub->id)
         );
 
         foreach ($serveEvents->getRequests() as $serveEvent) {
             self::$wireMock->removeServeEvent($serveEvent->getId());
+        }
+
+        unset(WireMockContext::$stubServedRequestCount[$stub->id]);
+
+        if (
+            self::$testToken !== null &&
+            isset(WireMockContext::$stubTestTokensMappings[$stub->id][self::$testToken])
+        ) {
+            unset(WireMockContext::$stubTestTokensMappings[$stub->id][self::$testToken]);
         }
     }
 }

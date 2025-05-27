@@ -5,3 +5,4 @@ parameters:
         - src
         - tests
     level: 8
+    treatPhpDocTypesAsCertain: false
