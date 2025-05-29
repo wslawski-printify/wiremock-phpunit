@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use Throwable;
 use WireMock\Phpunit\Exception\StartException;
 use WireMock\Phpunit\Exception\VerifyException;
 use WireMock\Phpunit\WireMockProxy;
@@ -77,7 +78,7 @@ final class WireMockProxyTest extends TestCase
 
         try {
             WireMockProxy::verify('random-test');
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             $this->fail('should not catch exception');
         }
     }
@@ -105,7 +106,10 @@ final class WireMockProxyTest extends TestCase
             'base_uri' => 'http://wiremock:8080',
         ]);
 
-        $client->post('/test')->getBody()->getContents();
+        try {
+            $client->post('/test')->getBody()->getContents();
+        } catch (Throwable) {
+        }
 
         $this->expectException(VerifyException::class);
         WireMockProxy::verify('random-test');
