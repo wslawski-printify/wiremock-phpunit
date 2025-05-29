@@ -132,8 +132,11 @@ trait WireMockTrait
         );
     }
 
-    protected function appendStubMappingVerification(StubMapping $stub, bool $resetStub = true): void
-    {
+    protected function appendStubMappingVerification(
+        StubMapping $stub,
+        bool $resetStub = true,
+        int $requestCount = 1
+    ): void {
         $requestPattern = $stub->getRequest();
         $stubId = WireMockHelper::stubId($stub);
 
@@ -151,11 +154,11 @@ trait WireMockTrait
 
         WireMockProxy::$verifyCallbacks[$stubId] = new Stub(
             $stubId,
-            function (DateTime $date) use ($requestPattern, $stubId) {
+            function (DateTime $date) use ($requestPattern, $stubId, $requestCount) {
                 try {
                     $serveEventsCount = WireMockHelper::serveEventsStubCount($stubId, $date);
 
-                    if ($serveEventsCount === WireMockContext::$stubServedRequestCount[$stubId]) {
+                    if (($serveEventsCount - WireMockContext::$stubServedRequestCount[$stubId]) !== $requestCount) {
                         throw RequestVerificationException::verificationFailed(
                             (string) $requestPattern->getUrlMatchingStrategy()?->getMatchingValue(),
                             $requestPattern->getMethod(),
@@ -179,8 +182,11 @@ trait WireMockTrait
         );
     }
 
-    protected function appendStubIdVerification(string $stubId, bool $resetStub = false): void
-    {
+    protected function appendStubIdVerification(
+        string $stubId,
+        bool $resetStub = false,
+        int $requestCount = 1
+    ): void {
         $createdAt = new DateTime();
         $stubId = WireMockHelper::stubId($stubId);
         $resetStub = WireMockProxy::$testToken !== null ? $resetStub : true;
@@ -198,11 +204,11 @@ trait WireMockTrait
 
         WireMockProxy::$verifyCallbacks[$stubId] = new Stub(
             $stubId,
-            function (DateTime $since) use ($stubId) {
+            function (DateTime $since) use ($stubId, $requestCount) {
                 try {
                     $serveEventsCount = WireMockHelper::serveEventsStubCount($stubId, $since);
 
-                    if ($serveEventsCount === WireMockContext::$stubServedRequestCount[$stubId]) {
+                    if (($serveEventsCount - WireMockContext::$stubServedRequestCount[$stubId]) !== $requestCount) {
                         $stub = WireMockProxy::instance()->getSingleStubMapping($stubId);
 
                         throw RequestVerificationException::verificationFailed(
