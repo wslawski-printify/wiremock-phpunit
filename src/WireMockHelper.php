@@ -35,6 +35,11 @@ final class WireMockHelper
         $newStub = clone $stub;
         $newStubId = Uuid::uuid4()->toString();
         $newStub->setId($newStubId);
+        $reflectionProperty = new \ReflectionProperty($newStub, 'scenarioName');
+        if (!empty($newStub->getScenarioName())) {
+            $reflectionProperty->setValue($newStub, WireMockHelper::appendTestToken($newStub->getScenarioName()));
+        }
+
         WireMockProxy::instance()->importStubs(new StubImport([$newStub], new StubImportOptions(
             StubImportOptions::IGNORE,
             false

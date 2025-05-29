@@ -141,6 +141,10 @@ trait WireMockTrait
 
         $resetStub = WireMockProxy::$testToken !== null ? $resetStub : true;
 
+        if (!empty($stub->getScenarioName())) {
+            WireMockProxy::addScenario(WireMockHelper::appendTestToken($stub->getScenarioName()));
+        }
+
         WireMockProxy::$verifyCallbacks[$stubId] = new Stub(
             $stubId,
             function (DateTime $date) use ($requestPattern, $stubId) {
@@ -176,11 +180,17 @@ trait WireMockTrait
         $createdAt = new DateTime();
         $stubId = WireMockHelper::stubId($stubId);
         $resetStub = WireMockProxy::$testToken !== null ? $resetStub : true;
+        $stubMapping = WireMockProxy::instance()->getSingleStubMapping($stubId);
+        assert($stubMapping !== null);
 
         WireMockContext::$stubServedRequestCount[$stubId] = WireMockHelper::serveEventsStubCount(
             $stubId,
             $createdAt
         );
+
+        if (!empty($stubMapping->getScenarioName())) {
+            WireMockProxy::addScenario($stubMapping->getScenarioName());
+        }
 
         WireMockProxy::$verifyCallbacks[$stubId] = new Stub(
             $stubId,
