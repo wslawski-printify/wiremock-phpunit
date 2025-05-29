@@ -38,9 +38,12 @@ final class DummyClientTest extends TestCase
     {
         $expectedBody = 'OK';
 
-        $this->mockTestPostRequestWithXML($expectedBody, '<?xml version="1.0"?>
+        $this->mockTestPostRequestWithXML(
+            $expectedBody,
+            '<?xml version="1.0"?>
 <result><email>arjun76@mertz.info</email><name>Julien Runte</name><phone>1-985-265-5979</phone><description>Ipsum nulla sed autem enim id quaerat. Explicabo alias inventore qui autem tempora esse. Assumenda quam magni dolorem. Culpa labore in ratione modi aliquam velit asperiores.</description></result>
-');
+'
+        );
 
         $result = $this->client->post('/test', ['body' => '<?xml version="1.0"?>
 <result><phone>1-985-265-5979</phone><email>arjun76@mertz.info</email><name>Julien Runte</name><description>Ipsum nulla sed autem enim id quaerat. Explicabo alias inventore qui autem tempora esse. Assumenda quam magni dolorem. Culpa labore in ratione modi aliquam velit asperiores.</description></result>
@@ -110,7 +113,8 @@ final class DummyClientTest extends TestCase
     {
         $this->mockTestPostRequest(
             (string) json_encode(['someKey' => 'someValue']),
-            (string) json_encode(['data' => 'whatever'])
+            (string) json_encode(['data' => 'whatever']),
+            true
         );
 
         $this->client->post('/test');
@@ -122,7 +126,8 @@ final class DummyClientTest extends TestCase
     {
         $this->mockTestPostRequest(
             (string) json_encode(['someKey' => 'someValue']),
-            (string) json_encode(['data' => 'whatever'])
+            (string) json_encode(['data' => 'whatever']),
+            true
         );
 
         $this->client->post('/test');
