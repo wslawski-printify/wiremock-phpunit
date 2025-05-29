@@ -98,17 +98,22 @@ trait WireMockTrait
                     // make sure that we actually verified it against expected stub
                     $serveEventsCount = WireMockHelper::serveEventsStubCount($stubId, $since);
 
-                    if ($serveEventsCount < $stubRequestCount) {
+                    if ($serveEventsCount !== $stubRequestCount) {
                         $nearMissesResult = WireMockProxy::instance()->findNearMissesFor($requestPatternBuilder);
 
                         throw RequestVerificationException::verificationFailed(
                             $path,
                             $method,
                             $nearMissesResult,
-                            $stubId
+                            $stubId,
+                            sprintf(
+                                'Expected %d requests, but got %d',
+                                $requestCount,
+                                max($serveEventsCount - $stubRequestCount, 0),
+                            )
                         );
                     }
-                } catch (VerificationException) {
+                } catch (VerificationException $exception) {
                     $nearMissesResult = WireMockProxy::instance()->findNearMissesFor($requestPatternBuilder);
 
                     throw RequestVerificationException::verificationFailed(
@@ -116,6 +121,7 @@ trait WireMockTrait
                         $method,
                         $nearMissesResult,
                         $stubId,
+                        $exception
                     );
                 }
                 catch (ClientException $clientException) {
@@ -163,7 +169,12 @@ trait WireMockTrait
                             (string) $requestPattern->getUrlMatchingStrategy()?->getMatchingValue(),
                             $requestPattern->getMethod(),
                             new FindNearMissesResult([]),
-                            $stubId
+                            $stubId,
+                            sprintf(
+                                'Expected %d requests, but got %d',
+                                $requestCount,
+                                max($serveEventsCount - WireMockContext::$stubServedRequestCount[$stubId], 0),
+                            )
                         );
                     }
 
@@ -215,7 +226,12 @@ trait WireMockTrait
                             (string)$stub?->getRequest()->getUrlMatchingStrategy()?->getMatchingValue(),
                             (string)$stub?->getRequest()->getMethod(),
                             new FindNearMissesResult([]),
-                            $stubId
+                            $stubId,
+                            sprintf(
+                                'Expected %d requests, but got %d',
+                                $requestCount,
+                                max($serveEventsCount - WireMockContext::$stubServedRequestCount[$stubId], 0),
+                            )
                         );
                     }
 

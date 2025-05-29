@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace WireMock\Phpunit\Exception;
 
+use Throwable;
 use WireMock\Client\FindNearMissesResult;
 
 final class RequestVerificationException extends \Exception
@@ -11,7 +12,7 @@ final class RequestVerificationException extends \Exception
     private function __construct(
         string $message,
         public readonly string $stubId,
-        ?\Throwable $previous = null,
+        ?Throwable $previous = null,
     ) {
         parent::__construct($message, previous: $previous);
     }
@@ -20,7 +21,8 @@ final class RequestVerificationException extends \Exception
         string $url,
         string $method,
         FindNearMissesResult $findNearMissesResult,
-        string $stubId
+        string $stubId,
+        Throwable|string $exception = null
     ): self {
         $url = str_replace('%', '%%', $url);
 
@@ -46,10 +48,11 @@ final class RequestVerificationException extends \Exception
         }
 
         $message = sprintf(
-            "Failed to verify interactions for path %s and method %s (stub %s). For more check wiremock logs.",
+            "Failed to verify interactions for path %s and method %s (stub %s). Reason: %s. For more check wiremock logs.",
             $url,
             $method,
-            $stubId
+            $stubId,
+            $exception instanceof Throwable ? $exception->getMessage() : $exception
         );
 
         if ($allNearMisses !== []) {
@@ -58,14 +61,15 @@ final class RequestVerificationException extends \Exception
 
         return new self(
             $message,
-            $stubId
+            $stubId,
+            $exception instanceof Throwable ? $exception : null,
         );
     }
 
     public static function clientException(
         string $url,
         string $method,
-        \Throwable $exception,
+        Throwable $exception,
         string $stubId
     ): self {
         return new self(
