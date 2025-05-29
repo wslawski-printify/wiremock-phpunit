@@ -76,7 +76,13 @@ final class WireMockProxy
         }
 
         foreach (WireMockContext::$scenarios as $scenario) {
-            self::$wireMock->resetScenario($scenario);
+            try {
+                self::$wireMock->resetScenario($scenario);
+            } catch (ClientException $clientException) {
+                if ($clientException->getResponseCode() !== 404) {
+                    throw $clientException;
+                }
+            }
         }
 
         $allRequests = json_decode(

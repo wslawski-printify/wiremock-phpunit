@@ -21,6 +21,7 @@ trait WireMockTrait
 {
     /**
      * @param bool $stubRequestBody If true, the request body will be included in stub, otherwise we will check it during verification process
+     * @param ?int $stubRequestCount In case stub serve events count is different from request count, it can be provided using this argument
      */
     protected function wireMock(
         string $method,
@@ -35,7 +36,8 @@ trait WireMockTrait
         ?string $whenScenario = null,
         ?string $toScenario = null,
         ?string $inScenario = null,
-        int $requestCount = 1
+        int $requestCount = 1,
+        ?int $stubRequestCount = null
     ): void {
         $response = $this->wireResponse($responseStatusCode, $responseBody, $responseHeaders);
 
@@ -64,6 +66,7 @@ trait WireMockTrait
         $stub = WireMockProxy::instance()->stubFor($request->willReturn($response));
         $stubId = $stub->getId();
         $createdAt = new DateTime();
+        $stubRequestCount = $stubRequestCount ?? $requestCount;
 
         WireMockProxy::$verifyCallbacks[(string) $stubId] = new Stub(
             $stubId,
@@ -73,7 +76,8 @@ trait WireMockTrait
                 $requestHeaders,
                 $requestBodyMatchingStrategy,
                 $requestCount,
-                $stubId
+                $stubId,
+                $stubRequestCount
             ) {
                 $requestPatternBuilder = $this->wireMethodRequestedFor($method, $path);
 
@@ -94,7 +98,7 @@ trait WireMockTrait
                     // make sure that we actually verified it against expected stub
                     $serveEventsCount = WireMockHelper::serveEventsStubCount($stubId, $since);
 
-                    if ($serveEventsCount < $requestCount) {
+                    if ($serveEventsCount < $stubRequestCount) {
                         $nearMissesResult = WireMockProxy::instance()->findNearMissesFor($requestPatternBuilder);
 
                         throw RequestVerificationException::verificationFailed(
