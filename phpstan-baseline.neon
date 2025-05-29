@@ -1,6 +1,11 @@
 parameters:
 	ignoreErrors:
 		-
+			message: "#^Caught class WireMock\\\\Client\\\\VerificationException is not an exception\\.$#"
+			count: 1
+			path: tests/Integration/DummyClientTest.php
+
+		-
 			message: "#^Using nullsafe method call on non\\-nullable type WireMock\\\\Matching\\\\UrlMatchingStrategy\\. Use \\-\\> instead\\.$#"
 			count: 3
 			path: tests/Integration/DummyClientTest.php
@@ -9,6 +14,11 @@ parameters:
 			message: "#^Using nullsafe method call on non\\-nullable type WireMock\\\\Stubbing\\\\StubMapping\\. Use \\-\\> instead\\.$#"
 			count: 2
 			path: tests/Integration/DummyClientTest.php
+
+		-
+			message: "#^Caught class WireMock\\\\Client\\\\VerificationException is not an exception\\.$#"
+			count: 1
+			path: tests/Integration/StubIdVerificationTest.php
 
 		-
 			message: "#^Using nullsafe method call on non\\-nullable type WireMock\\\\Matching\\\\UrlMatchingStrategy\\. Use \\-\\> instead\\.$#"
@@ -21,6 +31,11 @@ parameters:
 			path: tests/Integration/StubIdVerificationTest.php
 
 		-
+			message: "#^Caught class WireMock\\\\Client\\\\VerificationException is not an exception\\.$#"
+			count: 1
+			path: tests/Integration/StubMappingVerificationTest.php
+
+		-
 			message: "#^Using nullsafe method call on non\\-nullable type WireMock\\\\Matching\\\\UrlMatchingStrategy\\. Use \\-\\> instead\\.$#"
 			count: 3
 			path: tests/Integration/StubMappingVerificationTest.php
@@ -29,6 +44,11 @@ parameters:
 			message: "#^Using nullsafe method call on non\\-nullable type WireMock\\\\Stubbing\\\\StubMapping\\. Use \\-\\> instead\\.$#"
 			count: 2
 			path: tests/Integration/StubMappingVerificationTest.php
+
+		-
+			message: "#^Caught class WireMock\\\\Client\\\\VerificationException is not an exception\\.$#"
+			count: 1
+			path: tests/Unit/WireMockProxyTest.php
 
 		-
 			message: "#^Using nullsafe method call on non\\-nullable type WireMock\\\\Matching\\\\UrlMatchingStrategy\\. Use \\-\\> instead\\.$#"
