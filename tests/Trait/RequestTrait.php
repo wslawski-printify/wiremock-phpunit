@@ -26,6 +26,30 @@ trait RequestTrait
         );
     }
 
+    public function mockTestScenario(
+        string $expectedBody,
+        string $path,
+        int $expectedRequestCount,
+        int $expectedStubRequestCount,
+        string $inScenario,
+        string $whenScenario,
+        ?string $toScenario = null
+    ): void {
+        $this->wireMock(
+            'GET',
+            $path,
+            [],
+            null,
+            [],
+            $expectedBody,
+            whenScenario: $whenScenario,
+            toScenario: $toScenario,
+            inScenario: $inScenario,
+            requestCount: $expectedRequestCount,
+            stubRequestCount: $expectedStubRequestCount
+        );
+    }
+
     /**
      * @param array<string, string> $requestHeaders
      */
