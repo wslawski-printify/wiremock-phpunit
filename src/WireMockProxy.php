@@ -15,21 +15,26 @@ use WireMock\Phpunit\Exception\VerifyException;
 use WireMock\Client\WireMock;
 use WireMock\Serde\SerializerFactory;
 
-/**
- * @internal
- */
 final class WireMockProxy
 {
     /**
      * @var array<string, Stub>
+     * @internal
      */
     public static array $verifyCallbacks = [];
 
+    /**
+     * @internal
+     */
     public static ?WireMock $wireMock = null;
 
     private static ?Curl $curl = null;
     private static string $host;
     private static string $port;
+
+    /**
+     * @internal
+     */
     public static ?string $testToken = null;
 
     public static function startWireMock(
