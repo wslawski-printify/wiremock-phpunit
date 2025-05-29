@@ -7,6 +7,7 @@ namespace WireMock\Phpunit;
 use DateTime;
 use WireMock\Client\FindNearMissesResult;
 use WireMock\Client\ValueMatchingStrategy;
+use WireMock\Client\VerificationException;
 use WireMock\Phpunit\Dto\Stub;
 use WireMock\Phpunit\Exception\RequestVerificationException;
 use GuzzleHttp\Exception\ClientException;
@@ -18,6 +19,9 @@ use WireMock\Stubbing\StubMapping;
 
 trait WireMockTrait
 {
+    /**
+     * @param bool $stubRequestBody If true, the request body will be included in stub, otherwise we will check it during verification process
+     */
     protected function wireMock(
         string $method,
         string $path,
@@ -27,7 +31,7 @@ trait WireMockTrait
         array|string|null $responseBody = null,
         int $responseStatusCode = 200,
         ?string $requestContentType = null,
-        bool $stubRequestBody = true,
+        bool $stubRequestBody = false,
         ?string $whenScenario = null,
         ?string $toScenario = null,
         ?string $inScenario = null,
@@ -82,6 +86,12 @@ trait WireMockTrait
                 }
 
                 try {
+                    WireMockProxy::instance()->verify(
+                        $requestCount,
+                        $requestPatternBuilder,
+                    );
+
+                    // make sure that we actually verified it against expected stub
                     $serveEventsCount = WireMockHelper::serveEventsStubCount($stubId, $since);
 
                     if ($serveEventsCount < $requestCount) {
@@ -94,7 +104,17 @@ trait WireMockTrait
                             $stubId
                         );
                     }
-                } catch (ClientException $clientException) {
+                } catch (VerificationException) {
+                    $nearMissesResult = WireMockProxy::instance()->findNearMissesFor($requestPatternBuilder);
+
+                    throw RequestVerificationException::verificationFailed(
+                        $path,
+                        $method,
+                        $nearMissesResult,
+                        $stubId,
+                    );
+                }
+                catch (ClientException $clientException) {
                     throw RequestVerificationException::clientException(
                         $path,
                         $method,

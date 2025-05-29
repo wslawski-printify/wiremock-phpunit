@@ -11,24 +11,34 @@ trait RequestTrait
 {
     use WireMockTrait;
 
-    public function mockTestRequest(string $expectedBody, string $path = '/test'): void
+    /**
+     * @param array<string, string> $requestHeaders
+     */
+    public function mockTestRequest(string $expectedBody, string $path = '/test', array $requestHeaders = []): void
     {
         $this->wireMock(
             'GET',
             $path,
-            [],
+            $requestHeaders,
             null,
             [],
             $expectedBody
         );
     }
 
-    public function mockTestPostRequest(string $expectedBody, string $requestBody, bool $stubRequestBody = false): void
-    {
+    /**
+     * @param array<string, string> $requestHeaders
+     */
+    public function mockTestPostRequest(
+        string $expectedBody,
+        string $requestBody,
+        bool $stubRequestBody = false,
+        array $requestHeaders = []
+    ): void {
         $this->wireMock(
             'POST',
             '/test',
-            [],
+            $requestHeaders,
             $requestBody,
             [],
             $expectedBody,

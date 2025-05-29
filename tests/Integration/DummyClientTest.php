@@ -61,6 +61,16 @@ final class DummyClientTest extends TestCase
         self::assertEquals($expectedBody, $result);
     }
 
+    public function testVerifiesRequestWithHeaders(): void
+    {
+        $expectedBody = ['someKey' => 'otherValue'];
+
+        $this->mockTestRequest((string) json_encode($expectedBody));
+
+        $result = json_decode($this->client->get('/test')->getBody()->getContents(), true);
+        self::assertEquals($expectedBody, $result);
+    }
+
     public function testItVerifiesTwoRequestsWithDifferentBodies(): void
     {
         $expectedBody1 = ['someKey' => 'someValue1'];

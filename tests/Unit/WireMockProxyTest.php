@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use GuzzleHttp\Exception\ClientException;
 use Throwable;
 use WireMock\Phpunit\Exception\StartException;
 use WireMock\Phpunit\Exception\VerifyException;
@@ -99,7 +100,6 @@ final class WireMockProxyTest extends TestCase
         $this->mockTestPostRequest(
             (string) $expectedBody,
             (string) json_encode(['some-body' => 'whatever']),
-            true
         );
 
         $client = new Client([
@@ -113,5 +113,68 @@ final class WireMockProxyTest extends TestCase
 
         $this->expectException(VerifyException::class);
         WireMockProxy::verify('random-test');
+    }
+
+    public function testItThrowsExceptionOnWrongHeaders(): void
+    {
+        putenv('WIREMOCK_HOST=wiremock');
+        putenv('WIREMOCK_PORT=8080');
+
+        WireMockProxy::startWireMock(
+            'wiremock',
+            '8080',
+            3
+        );
+
+        $expectedBody = json_encode(['someKey' => 'someValue']);
+
+        $this->mockTestPostRequest(
+            (string) $expectedBody,
+            (string) json_encode(['some-body' => 'whatever']),
+            false,
+            ['X-Header' => 'some-value']
+        );
+
+        $client = new Client([
+            'base_uri' => 'http://wiremock:8080',
+        ]);
+
+        $client->post('/test', ['json' => ['some-body' => 'whatever']])->getBody()->getContents();
+
+        $this->expectException(VerifyException::class);
+        WireMockProxy::verify('random-test');
+    }
+
+    public function testItThrowsExceptionOnWrongStubbedBody(): void
+    {
+        putenv('WIREMOCK_HOST=wiremock');
+        putenv('WIREMOCK_PORT=8080');
+
+        WireMockProxy::startWireMock(
+            'wiremock',
+            '8080',
+            3
+        );
+
+        $expectedBody = json_encode(['someKey' => 'someValue']);
+
+        $this->mockTestPostRequest(
+            (string) $expectedBody,
+            (string) json_encode(['some-body' => 'whatever']),
+            true
+        );
+
+        $client = new Client([
+            'base_uri' => 'http://wiremock:8080',
+        ]);
+
+        try {
+            $client->post('/test')->getBody()->getContents();
+        } catch (Throwable $exception) {
+            self::assertInstanceOf(ClientException::class, $exception);
+            self::assertEquals(404, $exception->getResponse()->getStatusCode());
+            $this->expectException(VerifyException::class);
+            WireMockProxy::verify('random-test');
+        }
     }
 }
