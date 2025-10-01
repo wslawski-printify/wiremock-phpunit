@@ -9,9 +9,9 @@ jobs:
         name: wiremock
     steps:
     - checkout
-    - restore_cache: {keys: ['v1-dependencies-{{ checksum "composer.lock" }}', v1-dependencies-]}
+    - restore_cache: {keys: ['v1-dependencies-{{ checksum "composer.json" }}', v1-dependencies-]}
     - run: composer install -n -a
-    - save_cache: {paths: [vendor], key: 'v1-dependencies-{{ checksum "composer.lock" }}'}
+    - save_cache: {paths: [vendor], key: 'v1-dependencies-{{ checksum "composer.json" }}'}
     - run:
         name: Run static code analysis
         command: vendor/bin/phpstan
@@ -24,9 +24,9 @@ jobs:
         name: wiremock
     steps:
       - checkout
-      - restore_cache: {keys: ['v1-dependencies-{{ checksum "composer.lock" }}', v1-dependencies-]}
+      - restore_cache: {keys: ['v1-dependencies-{{ checksum "composer.json" }}', v1-dependencies-]}
       - run: composer install -n -a
-      - save_cache: {paths: [vendor], key: 'v1-dependencies-{{ checksum "composer.lock" }}'}
+      - save_cache: {paths: [vendor], key: 'v1-dependencies-{{ checksum "composer.json" }}'}
       - run: # for some reason some repositories require this configuration
           name: Configure proper working directory for pcov
           command: echo pcov.directory=/root/repo >> "$PHP_INI_DIR/conf.d/pcov.ini"
@@ -38,7 +38,7 @@ jobs:
           path: ~/phpunit
       - store_artifacts:
           path: ~/phpunit
-  test_integration:
+  test_integration_10:
     working_directory: ~/repo
     resource_class: small
     docker:
@@ -47,9 +47,36 @@ jobs:
         name: wiremock
     steps:
       - checkout
-      - restore_cache: {keys: ['v1-dependencies-{{ checksum "composer.lock" }}', v1-dependencies-]}
+      - restore_cache: {keys: ['v1-dependencies-phpunit10-{{ checksum "composer.json" }}', v1-dependencies-]}
+      - run: composer install -n -a --prefer-lowest
+      - save_cache: {paths: [vendor], key: 'v1-dependencies-phpunit10-{{ checksum "composer.json" }}'}
+      - run: # for some reason some repositories require this configuration
+          name: Configure proper working directory for pcov
+          command: echo pcov.directory=/root/repo >> "$PHP_INI_DIR/conf.d/pcov.ini"
+      - run:
+          shell: /bin/bash
+          name: run unit tests # we expect this test to fail with specific message
+          command: |
+            result=$((php vendor/bin/phpunit --configuration=phpunit.integration.xml --coverage-clover coverage-clover/clover-unit.xml --log-junit ~/phpunit/unit-junit.xml --testdox) | tee /dev/tty ) &&
+            lines=$(echo "$result" | grep "WireMock verification failed for test" | wc -l) &&
+            [ "$lines" = 2 ]
+      - store_test_results:
+          path: ~/phpunit
+      - store_artifacts:
+          path: ~/phpunit
+
+  test_integration_11:
+    working_directory: ~/repo
+    resource_class: small
+    docker:
+      - image: cobiro/php:8.2-develop
+      - image: wiremock/wiremock:latest
+        name: wiremock
+    steps:
+      - checkout
+      - restore_cache: {keys: ['v1-dependencies-phpunit11-{{ checksum "composer.json" }}', v1-dependencies-]}
       - run: composer install -n -a
-      - save_cache: {paths: [vendor], key: 'v1-dependencies-{{ checksum "composer.lock" }}'}
+      - save_cache: {paths: [vendor], key: 'v1-dependencies-phpunit11-{{ checksum "composer.json" }}'}
       - run: # for some reason some repositories require this configuration
           name: Configure proper working directory for pcov
           command: echo pcov.directory=/root/repo >> "$PHP_INI_DIR/conf.d/pcov.ini"
@@ -72,4 +99,5 @@ workflows:
     jobs:
       - phpstan
       - test_unit
-      - test_integration
+      - test_integration_phpunit_10
+      - test_integration_phpunit_11
