@@ -64,7 +64,8 @@ jobs:
           path: vendor
           key: v1-dependencies-phpunit10-${{ hashFiles('composer.json') }}
           restore-keys: v1-dependencies-
-      - run: composer update -n -a --prefer-lowest
+      - run: composer install -n -a
+      - run: composer update phpunit/phpunit -n -a --prefer-lowest
       - name: Configure pcov working directory
         run: echo pcov.directory=/root/repo >> "$PHP_INI_DIR/conf.d/pcov.ini"
       - name: Run integration tests (expect 2 WireMock verification failures)
