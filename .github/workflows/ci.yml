@@ -1,8 +1,10 @@
 name: CI
 
 on:
-  push:
   pull_request:
+  push:
+    branches:
+      - master
 
 jobs:
   phpstan:
@@ -62,14 +64,16 @@ jobs:
           path: vendor
           key: v1-dependencies-phpunit10-${{ hashFiles('composer.json') }}
           restore-keys: v1-dependencies-
-      - run: composer install -n -a --prefer-lowest
+      - run: composer update -n -a --prefer-lowest
       - name: Configure pcov working directory
         run: echo pcov.directory=/root/repo >> "$PHP_INI_DIR/conf.d/pcov.ini"
       - name: Run integration tests (expect 2 WireMock verification failures)
         shell: bash
         run: |
-          result=$((php vendor/bin/phpunit --configuration=phpunit.integration.xml --coverage-clover coverage-clover/clover-unit.xml --log-junit phpunit/unit-junit.xml --testdox) | tee /dev/tty ) &&
-          lines=$(echo "$result" | grep "WireMock verification failed for test" | wc -l) &&
+          set +e
+          output=$(php vendor/bin/phpunit --configuration=phpunit.integration.xml --coverage-clover coverage-clover/clover-unit.xml --log-junit phpunit/unit-junit.xml --testdox)
+          echo "$output"
+          lines=$(echo "$output" | grep "WireMock verification failed for test" | wc -l)
           [ "$lines" = 2 ]
       - uses: actions/upload-artifact@v4
         if: always()
@@ -97,8 +101,10 @@ jobs:
       - name: Run integration tests (expect 2 WireMock verification failures)
         shell: bash
         run: |
-          result=$((php vendor/bin/phpunit --configuration=phpunit.integration.xml --coverage-clover coverage-clover/clover-unit.xml --log-junit phpunit/unit-junit.xml --testdox) | tee /dev/tty ) &&
-          lines=$(echo "$result" | grep "WireMock verification failed for test" | wc -l) &&
+          set +e
+          output=$(php vendor/bin/phpunit --configuration=phpunit.integration.xml --coverage-clover coverage-clover/clover-unit.xml --log-junit phpunit/unit-junit.xml --testdox)
+          echo "$output"
+          lines=$(echo "$output" | grep "WireMock verification failed for test" | wc -l)
           [ "$lines" = 2 ]
       - uses: actions/upload-artifact@v4
         if: always()
