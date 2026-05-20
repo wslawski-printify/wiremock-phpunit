@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+env:
+  COMPOSER_AUTH: '{"http-basic":{"php-packages.printify.com":{"username":"${{ secrets.COMPOSER_REGISTRY_BASICAUTH_USERNAME }}","password":"${{ secrets.COMPOSER_GITHUB_TOKEN }}"}}}'
+
 jobs:
   phpstan:
     runs-on: ubuntu-latest
