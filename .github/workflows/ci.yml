@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  phpstan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer
+      - uses: actions/cache@v4
+        with:
+          path: vendor
+          key: v1-dependencies-php81-${{ hashFiles('composer.json') }}
+          restore-keys: v1-dependencies-php81-
+      - run: composer install -n -a
+      - name: Run static code analysis
+        run: vendor/bin/phpstan
+
+  test_unit:
+    runs-on: ubuntu-latest
+    services:
+      wiremock:
+        image: wiremock/wiremock:latest
+        ports:
+          - 8080:8080
+    steps:
+      - uses: actions/checkout@v4
+      - name: Map wiremock hostname to localhost
+        run: echo "127.0.0.1 wiremock" | sudo tee -a /etc/hosts
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: pcov
+          tools: composer
+      - uses: actions/cache@v4
+        with:
+          path: vendor
+          key: v1-dependencies-php81-${{ hashFiles('composer.json') }}
+          restore-keys: v1-dependencies-php81-
+      - run: composer install -n -a
+      - name: Run unit tests
+        run: php vendor/bin/phpunit --configuration=phpunit.xml --coverage-clover coverage-clover/clover-unit.xml --log-junit phpunit/unit-junit.xml --testdox
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: phpunit/
+
+  test_integration_10:
+    runs-on: ubuntu-latest
+    services:
+      wiremock:
+        image: wiremock/wiremock:latest
+        ports:
+          - 8080:8080
+    steps:
+      - uses: actions/checkout@v4
+      - name: Map wiremock hostname to localhost
+        run: echo "127.0.0.1 wiremock" | sudo tee -a /etc/hosts
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: pcov
+          tools: composer
+      - uses: actions/cache@v4
+        with:
+          path: vendor
+          key: v1-dependencies-phpunit10-${{ hashFiles('composer.json') }}
+          restore-keys: v1-dependencies-phpunit10-
+      - run: composer install -n -a
+      - run: composer update "phpunit/*" -W -n -a --prefer-lowest
+      - name: Run integration tests (expect 2 WireMock verification failures)
+        shell: bash
+        run: |
+          set +e
+          output=$(php vendor/bin/phpunit --configuration=phpunit.integration.xml --coverage-clover coverage-clover/clover-unit.xml --log-junit phpunit/unit-junit.xml --testdox)
+          echo "$output"
+          lines=$(echo "$output" | grep "WireMock verification failed for test" | wc -l)
+          [ "$lines" = 2 ]
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-10-results
+          path: phpunit/
+
+  test_integration_11:
+    runs-on: ubuntu-latest
+    services:
+      wiremock:
+        image: wiremock/wiremock:latest
+        ports:
+          - 8080:8080
+    steps:
+      - uses: actions/checkout@v4
+      - name: Map wiremock hostname to localhost
+        run: echo "127.0.0.1 wiremock" | sudo tee -a /etc/hosts
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: pcov
+          tools: composer
+      - uses: actions/cache@v4
+        with:
+          path: vendor
+          key: v1-dependencies-phpunit11-${{ hashFiles('composer.json') }}
+          restore-keys: v1-dependencies-phpunit11-
+      - run: composer install -n -a
+      - name: Run integration tests (expect 2 WireMock verification failures)
+        shell: bash
+        run: |
+          set +e
+          output=$(php vendor/bin/phpunit --configuration=phpunit.integration.xml --coverage-clover coverage-clover/clover-unit.xml --log-junit phpunit/unit-junit.xml --testdox)
+          echo "$output"
+          lines=$(echo "$output" | grep "WireMock verification failed for test" | wc -l)
+          [ "$lines" = 2 ]
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-11-results
+          path: phpunit/
