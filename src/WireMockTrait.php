@@ -16,12 +16,16 @@ use WireMock\Client\RequestPatternBuilder;
 use WireMock\Client\ResponseDefinitionBuilder;
 use WireMock\Client\WireMock;
 use WireMock\Stubbing\StubMapping;
+use WireMock\Verification\CountMatchingStrategy;
 
 trait WireMockTrait
 {
     /**
      * @param bool $stubRequestBody If true, the request body will be included in stub, otherwise we will check it during verification process
-     * @param ?int $stubRequestCount In case stub serve events count is different from request count, it can be provided using this argument
+     * @param int|CountMatchingStrategy $requestCount Expected number of matching requests. Pass an int for an exact
+     *                                                 count, or a CountMatchingStrategy (e.g. WireMock::moreThanOrExactly(2))
+     *                                                 to assert against a range.
+     * @param int|CountMatchingStrategy|null $stubRequestCount In case stub serve events count is different from request count, it can be provided using this argument
      */
     protected function wireMock(
         string $method,
@@ -36,8 +40,8 @@ trait WireMockTrait
         ?string $whenScenario = null,
         ?string $toScenario = null,
         ?string $inScenario = null,
-        int $requestCount = 1,
-        ?int $stubRequestCount = null
+        int|CountMatchingStrategy $requestCount = 1,
+        int|CountMatchingStrategy|null $stubRequestCount = null
     ): void {
         $response = $this->wireResponse($responseStatusCode, $responseBody, $responseHeaders);
 
@@ -98,7 +102,7 @@ trait WireMockTrait
                     // make sure that we actually verified it against expected stub
                     $serveEventsCount = WireMockHelper::serveEventsStubCount($stubId, $since);
 
-                    if ($serveEventsCount !== $stubRequestCount) {
+                    if (! $this->stubServeEventsCountMatches($stubRequestCount, $serveEventsCount)) {
                         $nearMissesResult = WireMockProxy::instance()->findNearMissesFor($requestPatternBuilder);
 
                         throw RequestVerificationException::verificationFailed(
@@ -107,9 +111,9 @@ trait WireMockTrait
                             $nearMissesResult,
                             $stubId,
                             sprintf(
-                                'Expected %d requests, but got %d',
-                                $requestCount,
-                                max($serveEventsCount - $stubRequestCount, 0),
+                                'Expected %s requests, but got %d',
+                                $this->describeExpectedCount($stubRequestCount),
+                                $serveEventsCount,
                             )
                         );
                     }
@@ -248,6 +252,24 @@ trait WireMockTrait
             $resetStub,
             $createdAt
         );
+    }
+
+    private function stubServeEventsCountMatches(int|CountMatchingStrategy $expectedCount, int $actualCount): bool
+    {
+        if ($expectedCount instanceof CountMatchingStrategy) {
+            return $expectedCount->matches($actualCount);
+        }
+
+        return $actualCount === $expectedCount;
+    }
+
+    private function describeExpectedCount(int|CountMatchingStrategy $expectedCount): string
+    {
+        if ($expectedCount instanceof CountMatchingStrategy) {
+            return $expectedCount->describe();
+        }
+
+        return (string) $expectedCount;
     }
 
     private function wireRequest(string $method, string $path): MappingBuilder

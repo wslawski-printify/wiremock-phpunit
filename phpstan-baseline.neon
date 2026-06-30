@@ -74,3 +74,18 @@ parameters:
 			message: "#^Using nullsafe method call on non\\-nullable type WireMock\\\\Stubbing\\\\StubMapping\\. Use \\-\\> instead\\.$#"
 			count: 2
 			path: tests/Unit/WireMockProxyTest.php
+
+		-
+			message: "#^Caught class WireMock\\\\Client\\\\VerificationException is not an exception\\.$#"
+			count: 1
+			path: tests/Unit/CountMatchingStrategyTest.php
+
+		-
+			message: "#^Using nullsafe method call on non\\-nullable type WireMock\\\\Matching\\\\UrlMatchingStrategy\\. Use \\-\\> instead\\.$#"
+			count: 3
+			path: tests/Unit/CountMatchingStrategyTest.php
+
+		-
+			message: "#^Using nullsafe method call on non\\-nullable type WireMock\\\\Stubbing\\\\StubMapping\\. Use \\-\\> instead\\.$#"
+			count: 2
+			path: tests/Unit/CountMatchingStrategyTest.php
